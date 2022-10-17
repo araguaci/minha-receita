@@ -1,8 +1,6 @@
 # Como usar
 
-A API web tem apenas dois _endpoints_: `/` e `/healthz`. Nos exemplos a seguir, substituta `https://minhareceita.org` por `http://0.0.0.0:8000` caso esteja rodando o servidor localmente.
-
-## `GET /<número do CNPJ>`
+A API web tem apenas um _endpoints_ principal: `/<número do CNPJ>`. Nos exemplos a seguir, substituta `https://minhareceita.org` por `http://0.0.0.0:8000` caso esteja rodando o servidor localmente.
 
 | Caminho da URL | Tipo de requisição | Código esperado na resposta | Conteúdo esperado na resposta |
 |---|---|---|---|
@@ -15,13 +13,13 @@ A API web tem apenas dois _endpoints_: `/` e `/healthz`. Nos exemplos a seguir, 
 | `/33683111000280` | `GET` | 200 | _Ver JSON de exemplo abaixo._ |
 | `/33.683.111/0002-80` | `GET` | 200 | _Ver JSON de exemplo abaixo._ |
 
-### Exemplo de requisição usando o `curl`
+## Exemplo de requisição usando o `curl`
 
 ```console
 $ curl https://minhareceita.org/33683111000280
 ```
 
-### Exemplo de resposta válida
+## Exemplo de resposta válida
 
 ```json
 {
@@ -193,10 +191,12 @@ $ curl https://minhareceita.org/33683111000280
 }
 ```
 
-## `GET /healthz`
+## _Endpoints_ auxiliares
 
-| Caminho da URL | Tipo de requisição | Código esperado na resposta | Conteúdo esperado na resposta |
-|---|---|---|---|
-| `/healthz` | `GET` | 200 | |
-| `/healthz` | `HEAD` | 405 | `{"message": "Essa URL aceita apenas o método GET."}` |
-| `/healthz` | `POST` | 405 | `{"message": "conteúdo inválido na requisição GET."}` |
+Todos esses _endpoints_ apenas aceitam requisições do tipo `GET` e, é esperado, respondem com status `200`:
+
+| Caminho da URL | Conteúdo esperado na resposta |
+---|---|
+| `/urls` | Lista de URLs para download no [formato requerido pelo Cloud Storage Transfer Service do Google Cloud](https://cloud.google.com/storage-transfer/docs/create-url-list) |
+| `/updated` | JSON contendo a data de extração dos dados pela Receita Federal. |
+| `/healthz` | Resposta sem conteúdo |

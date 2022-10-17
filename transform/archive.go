@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"path/filepath"
+	"regexp"
 	"strconv"
 	"strings"
 
@@ -14,8 +15,11 @@ import (
 
 const separator = ';'
 
+var multipleSpaces = regexp.MustCompile(`\s{2,}`)
+
 type archivedCSV struct {
 	path    string
+	file    io.ReadCloser
 	reader  *csv.Reader
 	toClose []io.Closer
 }
@@ -29,10 +33,6 @@ func newArchivedCSV(p string, s rune) (*archivedCSV, error) {
 	var a *archivedCSV
 	t := strings.TrimSuffix(filepath.Base(p), filepath.Ext(p))
 	for _, z := range r.File {
-		if z.Name != t {
-			continue
-		}
-
 		if z.FileInfo().IsDir() {
 			continue
 		}
@@ -44,7 +44,7 @@ func newArchivedCSV(p string, s rune) (*archivedCSV, error) {
 
 		c := csv.NewReader(f)
 		c.Comma = s
-		a = &archivedCSV{p, c, []io.Closer{f, r}}
+		a = &archivedCSV{p, f, c, []io.Closer{f, r}}
 		break
 	}
 
@@ -75,7 +75,7 @@ func (a *archivedCSV) read() ([]string, error) {
 		if err != nil {
 			return []string{}, fmt.Errorf("encoding error in text %s from %s: %w", l, a.path, err)
 		}
-		ls[i] = strings.Map(removeNulChar, ls[i])
+		ls[i] = multipleSpaces.ReplaceAllString(strings.Map(removeNulChar, ls[i]), " ")
 	}
 	return ls, nil
 }

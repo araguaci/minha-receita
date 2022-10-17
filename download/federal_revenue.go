@@ -14,15 +14,18 @@ import (
 )
 
 const (
+	// FederalRevenueUpdatedAt is a file that contains the date the data was
+	// extracted by the Federal Revenue
+	FederalRevenueUpdatedAt = "updated_at.txt"
+
 	federalRevenueURL       = "https://www.gov.br/receitafederal/pt-br/assuntos/orientacao-tributaria/cadastros/consultas/dados-publicos-cnpj"
 	federalRevenueSelector  = "a.external-link"
 	federalRevenueExtension = ".zip"
-	federalRevenueUpdatedAt = "updated_at.txt"
 )
 
 var updatedAtRegex = regexp.MustCompile(`(?i)data da última extração:\s*(\d{2}/\d{2}/\d{4})`)
 
-func federalRevenueGetURLs(client *http.Client, url, dir string) ([]string, error) {
+func federalRevenueGetURLsBase(client *http.Client, url, dir string, updatedAt bool) ([]string, error) {
 	r, err := client.Get(url)
 	if err != nil {
 		return nil, fmt.Errorf("error getting %s: %w", federalRevenueURL, err)
@@ -35,8 +38,10 @@ func federalRevenueGetURLs(client *http.Client, url, dir string) ([]string, erro
 	if err != nil {
 		return nil, err
 	}
-	if err := saveUpdatedAt(dir, d); err != nil {
-		return nil, fmt.Errorf("could not save the update at date: %w", err)
+	if updatedAt {
+		if err := saveUpdatedAt(dir, d); err != nil {
+			return nil, fmt.Errorf("could not save the update at date: %w", err)
+		}
 	}
 	urls := make(map[string]struct{})
 	d.Find(federalRevenueSelector).Each(func(_ int, a *goquery.Selection) {
@@ -57,6 +62,14 @@ func federalRevenueGetURLs(client *http.Client, url, dir string) ([]string, erro
 	return u, nil
 }
 
+func federalRevenueGetURLs(client *http.Client, url, dir string) ([]string, error) {
+	return federalRevenueGetURLsBase(client, url, dir, true)
+}
+
+func federalRevenueGetURLsNoUpdatedAt(client *http.Client, url, dir string) ([]string, error) {
+	return federalRevenueGetURLsBase(client, url, dir, false)
+}
+
 func saveUpdatedAt(dir string, dom *goquery.Document) error {
 	b := dom.Find("body").First()
 	m := updatedAtRegex.FindAllStringSubmatch(b.Text(), -1)
@@ -67,7 +80,7 @@ func saveUpdatedAt(dir string, dom *goquery.Document) error {
 	if err != nil {
 		return fmt.Errorf("cannot parse date %s: %w", m[0][1], err)
 	}
-	pth := filepath.Join(dir, federalRevenueUpdatedAt)
+	pth := filepath.Join(dir, FederalRevenueUpdatedAt)
 	f, err := os.Create(pth)
 	if err != nil {
 		return fmt.Errorf("could not create %s: %w", pth, err)

@@ -2,7 +2,7 @@
 
 ## Banco de dados
 
-O projeto requer um banco de dados PostgreSQL e os comandos que requerem banco de dados aceitam `--database-uri` (ou `-u`) como argumento com a URI de acesso ao PostgreSQL (o padrão é o valor da variável de ambiente `POSTGRES_URI`).
+O projeto requer um banco de dados PostgreSQL e os comandos que requerem banco de dados aceitam `--database-uri` (ou `-u`) como argumento com a URI de acesso ao PostgreSQL (o padrão é o valor da variável de ambiente `DATABASE_URL`).
 
 Caso deseje usar o Docker Compose do projeto para subir uma instância do banco de dados:
 
@@ -16,17 +16,18 @@ A URI de acesso será `postgres://minhareceita:minhareceita@localhost:5432/minha
 
 O comando `download` baixa dados da Receita Federal, mais um arquivo do Tesouro Nacional com o código dos municípios do IBGE.
 
-O servidor da Receita Federal é lento e instável, e quando um download falha, o arquivo não é salvo (ou seja, não fica, no diretório, um arquivo pela metade; pode-se assumir que os arquivos restantes são íntegros e não precisam ser baixados novamente). Por esse motivo pode ser esperado que a barra de progresso de download recue (quando um arquivo de download falha, retiramos os bytes baixados da barra de download, pois na nova tentativa o download começa do zero).
+O servidor da Receita Federal é lento e instável, então todo os arquivos são [baixados em pequenas fatias](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Content-Range).
 
 O comando aceita um opção `--directory` (ou `-d`) com um diretório onde serão salvos os arquivos originais da Receita Federal. O padrão é `data/`.
 
 Caso o download falhe, é recomendado variar as configurações explicadas no `--help`, por exemplo:
 
-* diminuir o número de downloads paralelos com o `--parallel` (ou `-p`)
-* aumentar o números de tentativas de download de um mesmo arquivo com `--retries` (ou `-r`)
-* aumentar o tempo de `--timeout` (ou `-t`)
+* número de downloads paralelos com o `--parallel` (ou `-p`)
+* números de tentativas de download de cada fatia de cada arquivo com `--retries` (ou `-r`)
+* tempo limite para cada fatia com `--timeout` (ou `-t`)
 * rodar o comando de download sucessivas vezes com a opção `--skip` (ou `-x`) para baixar apenas os arquivos que estão faltando
-* por fim, pode-se apenas listar as URLs para download dos arquivos com `--urls-only` (ou `-u`) e tentar fazer o download de outra forma (manualmente, com alguma ferramenta que permite recomeçar downloads interrompidos, etc.)
+
+Em último caso, é possível listar as URLs para download dos arquivos com comando `urls`; e, então, tentar fazer o download de outra forma (manualmente, com alguma ferramenta que permite recomeçar downloads interrompidos, etc.).
 
 ### Exemplos de uso
 
@@ -43,6 +44,10 @@ Com Docker:
 $ docker-compose run --rm minha-receita download --directory /mnt/data/
 ```
 
+## Verificação dos downloads
+
+O servidor da Receita Federal, além de lento e instável, não oferece uma opção de [soma de verificação](https://pt.wikipedia.org/wiki/Soma_de_verifica%C3%A7%C3%A3o). Com isso, pode acontecer de os arquivos baixados estarem corrompidos. O comando `check` verifica a integridade dos arquivos `.zip` baixados. A opção `--delete` exclui os arquivos que falharem na verificação.
+
 ## Tratamento dos dados
 
 O comando `transform` transforma os arquivos para o formato JSON, consolidando as informações de todos os arquivos CSV. Esse JSON é armazenado diretamente no banco de dados. Para tanto, é preciso criar a tabela no banco de dados com o comando `create` (o comando `drop` pode ser utilizado para excluir essa mesma tabela).
@@ -51,7 +56,7 @@ Para especificar onde ficam os arquivos originais da Receita Federal e do Tesour
 
 ### Exemplos de uso
 
-Sem Docker, com a variável de ambiente `POSTGRES_URI` configurada:
+Sem Docker, com a variável de ambiente `DATABASE_URL` configurada:
 
 ```console
 $ minha-receita drop  # caso necessário
@@ -78,7 +83,7 @@ A API web é uma aplicação super simples que, por padrão, ficará disponível
 
 ### Exemplos de uso
 
-Sem Docker, com a variável de ambiente `POSTGRES_URI` configurada:
+Sem Docker, com a variável de ambiente `DATABASE_URL` configurada:
 
 ```console
 $ minha-receita api

@@ -13,9 +13,9 @@ func TestPostgresDB(t *testing.T) {
 	partner2 := `[{"name":  "fourty-two"}]`
 	expected := `{"qsa": [{"name": 42}, {"name": "fourty-two"}], "again": "fourty-two", "answer": 42}`
 
-	u := os.Getenv("TEST_POSTGRES_URI")
+	u := os.Getenv("TEST_DATABASE_URL")
 	if u == "" {
-		t.Errorf("expected a posgres uri at TEST_POSTGRES_URI, found nothing")
+		t.Errorf("expected a posgres uri at TEST_DATABASE_URL, found nothing")
 		return
 	}
 	pg, err := NewPostgreSQL(u, "public")
@@ -36,6 +36,12 @@ func TestPostgresDB(t *testing.T) {
 	if err := pg.CreateCompanies([][]string{{id, json}}); err != nil {
 		t.Errorf("expected no error saving a company, got %s", err)
 	}
+	if err := pg.CreateCompanies([][]string{{id, json}}); err != nil {
+		t.Errorf("expected no error saving a duplicated company, got %s", err)
+	}
+	if err := pg.CreateIndex(); err != nil {
+		t.Errorf("expected no error creating index, got %s", err)
+	}
 	got, err := pg.GetCompany("33683111000280")
 	if err != nil {
 		t.Errorf("expected no error getting a company, got %s", err)
@@ -55,5 +61,17 @@ func TestPostgresDB(t *testing.T) {
 	}
 	if got != expected {
 		t.Errorf("expected json to be %s, got %s", expected, got)
+	}
+	if err := pg.MetaSave("answer", "42"); err != nil {
+		t.Errorf("expected no error writing to the metadata table, got %s", err)
+	}
+	if got := pg.MetaRead("answer"); got != "42" {
+		t.Errorf("expected 42 as the answer, got %s", got)
+	}
+	if err := pg.MetaSave("answer", "fourty-two"); err != nil {
+		t.Errorf("expected no error re-writing to the metadata table, got %s", err)
+	}
+	if got := pg.MetaRead("answer"); got != "fourty-two" {
+		t.Errorf("expected foruty-two as the answer, got %s", got)
 	}
 }

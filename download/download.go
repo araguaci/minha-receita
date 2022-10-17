@@ -4,9 +4,10 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"sort"
 	"time"
 )
+
+type database interface{ MetaSave(string, string) error }
 
 type getFilesConfig struct {
 	handler getURLsHandler
@@ -14,11 +15,9 @@ type getFilesConfig struct {
 }
 
 // Download all the files (might take several minutes).
-func Download(dir string, timeout time.Duration, urlsOnly, skip bool, parallel, retries int) error {
+func Download(dir string, timeout time.Duration, skip bool, parallel, retries, chunkSize int) error {
 	c := &http.Client{Timeout: timeout}
-	if !urlsOnly {
-		log.Output(2, "Preparing to download from the Federal Revenue official website…")
-	}
+	log.Output(2, "Preparing to download from the Federal Revenue official website…")
 	confs := []getFilesConfig{
 		{federalRevenueGetURLs, federalRevenueURL},
 		{nationalTreasureGetURLs, nationalTreasureBaseURL},
@@ -27,20 +26,32 @@ func Download(dir string, timeout time.Duration, urlsOnly, skip bool, parallel, 
 	if err != nil {
 		return fmt.Errorf("error gathering resources for download: %w", err)
 	}
-	if urlsOnly {
-		urls := make([]string, 0, len(fs))
-		for _, f := range fs {
-			urls = append(urls, f.url)
-		}
-		sort.Strings(urls)
-		for _, u := range urls {
-			fmt.Println(u)
-		}
+	if len(fs) == 0 {
 		return nil
 	}
-	d, err := newDownloader(c, fs, 2, 4)
+	fs, err = getSizes(c, fs, false)
 	if err != nil {
-		return fmt.Errorf("error creating a downloader: %w", err)
+		return fmt.Errorf("error getting file sizes: %w", err)
 	}
-	return d.downloadAll()
+	return download(c, fs, parallel, retries, uint64(chunkSize))
+}
+
+// URLs shows the URLs to be downloaded.
+func URLs(db database, dir string, skip, tsv, saveToDB bool) error {
+	c := &http.Client{}
+	confs := []getFilesConfig{
+		{federalRevenueGetURLsNoUpdatedAt, federalRevenueURL},
+		{nationalTreasureGetURLs, nationalTreasureBaseURL},
+	}
+	fs, err := getFiles(c, confs, dir, skip)
+	if err != nil {
+		return fmt.Errorf("error gathering resources for download: %w", err)
+	}
+	if tsv {
+		fs, err = getSizes(c, fs, true)
+		if err != nil {
+			return fmt.Errorf("error getting file sizes: %w", err)
+		}
+	}
+	return listURLs(db, fs, tsv, saveToDB)
 }

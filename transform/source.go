@@ -1,6 +1,7 @@
 package transform
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"log"
@@ -10,16 +11,16 @@ import (
 type sourceType string
 
 const (
-	venues         sourceType = "ESTABELE"
-	motives        sourceType = "MOTICSV"
-	base           sourceType = "EMPRECSV"
-	cities         sourceType = "MUNICCSV"
-	cnaes          sourceType = "CNAECSV"
-	countries      sourceType = "PAISCSV"
-	natures        sourceType = "NATJUCSV"
-	partners       sourceType = "SOCIOCSV"
-	qualifications sourceType = "QUALSCSV"
-	taxes          sourceType = "SIMPLES"
+	venues         sourceType = "Estabelecimentos"
+	motives        sourceType = "Motivos"
+	base           sourceType = "Empresas"
+	cities         sourceType = "Municipios"
+	cnaes          sourceType = "Cnaes"
+	countries      sourceType = "Paises"
+	natures        sourceType = "Naturezas"
+	partners       sourceType = "Socios"
+	qualifications sourceType = "Qualificacoes"
+	taxes          sourceType = "Simples"
 )
 
 type source struct {
@@ -64,20 +65,19 @@ func (s *source) resetReaders() error {
 
 func (s *source) countLinesFor(a *archivedCSV, count chan<- int64, errs chan<- error) {
 	var t int64
+	buf := make([]byte, 32*1024)
 	for {
-		if atomic.LoadUint32(&s.shutdown) == 1 {
-			return
-		}
-		_, err := a.read()
+		c, err := a.file.Read(buf)
+		t += int64(bytes.Count(buf[:c], []byte{'\n'}))
 		if err == io.EOF {
 			break
 		}
 		if err != nil {
-			atomic.StoreUint32(&s.shutdown, 1)
-			errs <- err
+			if atomic.CompareAndSwapUint32(&s.shutdown, 0, 1) {
+				errs <- err
+			}
 			return
 		}
-		t++
 	}
 	if atomic.LoadUint32(&s.shutdown) == 1 {
 		return

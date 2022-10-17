@@ -2,37 +2,10 @@ package download
 
 import (
 	"os"
-	"path/filepath"
 	"testing"
 )
 
-func TestNewDownloader(t *testing.T) {
-	ts := httpTestServer(t, "dados-publicos-cnpj.html")
-	defer ts.Close()
-
-	tmp := t.TempDir()
-	fs := []file{
-		{ts.URL + "/file1.html", filepath.Join(tmp, "file1.html")},
-		{ts.URL + "/file2.html", filepath.Join(tmp, "file2.html")},
-	}
-	d, err := newDownloader(ts.Client(), fs, 4, 4)
-	if err != nil {
-		t.Errorf("Expected newDownloader to return a downloader, got: %v", err)
-	}
-
-	f, s := loadFixture(t, "dados-publicos-cnpj.html")
-	defer f.Close()
-
-	expectedTotalSize := int64(len(fs)) * s
-	if d.totalSize != expectedTotalSize {
-		t.Errorf("Expected totalSize to be %d, got %d", expectedTotalSize, d.totalSize)
-	}
-	if d.bar == nil {
-		t.Errorf("Expected downloader to have a progess bar")
-	}
-}
-
-func TestDownloadAll(t *testing.T) {
+func TestDownloader(t *testing.T) {
 	ts := httpTestServer(t, "dados-publicos-cnpj.html")
 	defer ts.Close()
 
@@ -41,15 +14,14 @@ func TestDownloadAll(t *testing.T) {
 
 	tmp := t.TempDir()
 	fs := []file{
-		{ts.URL + "/file1.html", filepath.Join(tmp, "file1.html")},
-		{ts.URL + "/file2.html", filepath.Join(tmp, "file2.html")},
+		newFile(ts.URL+"/file1.html", tmp),
+		newFile(ts.URL+"/file2.html", tmp),
 	}
-	d, err := newDownloader(ts.Client(), fs, 4, 4)
-	if err != nil {
-		t.Errorf("Expected newDownloader to return a downloader, got: %v", err)
+	for i := range fs {
+		fs[i].size = 203867
 	}
 
-	err = d.downloadAll()
+	err := download(ts.Client(), fs, DefaultMaxParallel, DefaultMaxRetries, DefaultChunkSize)
 	if err != nil {
 		t.Errorf("Expected downloadAll to run without errors, got: %v", err)
 	}

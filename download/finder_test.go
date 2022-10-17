@@ -13,7 +13,7 @@ func TestGetURLs(t *testing.T) {
 		handler  getURLsHandler
 		expected int
 	}{
-		{"federal revenue", "dados-publicos-cnpj.html", federalRevenueGetURLs, 37},
+		{"federal revenue", "dados-publicos-cnpj.html", federalRevenueGetURLs, 38},
 		{"national treasure", "national-treasure.json", nationalTreasureGetURLs, 1},
 	} {
 		ts := httpTestServer(t, tc.fixture)
@@ -38,7 +38,7 @@ func TestGetFiles(t *testing.T) {
 		t.Errorf("Expected getFiles to run withour errors, got: %v:", err)
 		return
 	}
-	expected := 37
+	expected := 38
 	if expected != len(got) {
 		t.Errorf("Expected getFiles to return %d files, got %d", expected, len(got))
 	}
@@ -48,6 +48,25 @@ func TestGetFiles(t *testing.T) {
 		}
 		if g := filepath.Base(f.path); !strings.HasSuffix(f.url, g) {
 			t.Errorf("Unexpected file name for %s: %s", f.url, g)
+		}
+	}
+}
+
+func TestGetSizes(t *testing.T) {
+	f := "dados-publicos-cnpj.html"
+	ts := httpTestServer(t, f)
+	defer ts.Close()
+	url := ts.URL + "/" + f
+	fs := []file{{url: url}}
+	got, err := getSizes(ts.Client(), fs, false)
+	if err != nil {
+		t.Errorf("Expected getSizes to run withour errors, got: %v:", err)
+		return
+	}
+	expected := uint64(203867)
+	for _, g := range got {
+		if g.url == url && g.size != expected {
+			t.Errorf("Expected %s size to be %d, got: %d", f, expected, g.size)
 		}
 	}
 }

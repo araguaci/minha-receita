@@ -1,4 +1,4 @@
-FROM golang:1.17-bullseye as build
+FROM golang:1.18-bullseye as build
 WORKDIR /minha-receita
 ADD go.* ./
 ADD main.go .
@@ -9,6 +9,7 @@ ADD download/ ./download/
 ADD testdata/ ./testdata/
 ADD transform/ ./transform/
 ADD sample/ ./sample/
+ADD check/ ./check/
 RUN go get && go build -o /usr/bin/minha-receita
 
 FROM debian:bullseye-slim
